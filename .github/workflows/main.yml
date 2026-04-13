@@ -1,6 +1,16 @@
 name: Backend CI
 
 on:
+  push:
+    paths:
+      - "apps/backend/**"
+      - "infra/**"
+      - ".github/workflows/main.yml"
+  pull_request:
+    paths:
+      - "apps/backend/**"
+      - "infra/**"
+      - ".github/workflows/main.yml"
   workflow_dispatch:
 
 env:
@@ -61,3 +71,40 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  terraform-check:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform validate -no-color
+
+      - name: Configure AWS credentials
+        if: github.event_name != 'pull_request' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Terraform plan
+        if: github.event_name != 'pull_request' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != ''
+        env:
+          TF_VAR_k3s_token: ${{ secrets.K3S_TOKEN }}
+        run: terraform plan -input=false -lock=false -no-color
