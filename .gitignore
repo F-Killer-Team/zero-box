@@ -1,0 +1,4 @@
+node_modules/
+.env
+apps/backend/uploads/
+dist/
