@@ -16,7 +16,7 @@ function DropZone({ selectedFile, setSelectedFile, handleUpload, isRunning }) {
 
     const file = e.dataTransfer.files[0];
     if (file) {
-      setSelectedFile(file); 
+      setSelectedFile(file);
     }
   };
 
@@ -44,20 +44,11 @@ function DropZone({ selectedFile, setSelectedFile, handleUpload, isRunning }) {
           : "파일을 드래그하거나 선택한 뒤 분석을 실행하세요"}
       </p>
 
-      <input
-        type="file"
-        onChange={handleChange}
-        disabled={isRunning}
-      />
+      <input type="file" onChange={handleChange} disabled={isRunning} />
 
-      {selectedFile && (
-        <p className="filename">선택된 파일: {selectedFile.name}</p>
-      )}
+      {selectedFile && <p className="filename">선택된 파일: {selectedFile.name}</p>}
 
-      <button
-        onClick={handleUpload}
-        disabled={isRunning || !selectedFile}
-      >
+      <button onClick={handleUpload} disabled={isRunning || !selectedFile}>
         {isRunning ? "분석 진행 중..." : "격리실로 전송"}
       </button>
     </div>
