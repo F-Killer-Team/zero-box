@@ -1,23 +1,16 @@
-name: Backend CI
+name: Sandbox Deployment Pipeline
 
 on:
-  push:
-    paths:
-      - "apps/backend/**"
-      - "infra/**"
-      - ".github/workflows/main.yml"
-  pull_request:
-    paths:
-      - "apps/backend/**"
-      - "infra/**"
-      - ".github/workflows/main.yml"
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/sandbox-backend
+  BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/sandbox-backend
+  FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/sandbox-frontend
+  SANDBOX_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/sandbox-runner
 
 jobs:
-  backend-test-and-build:
+  # 백엔드 이미지 빌드 & 푸시
+  backend-build:
     runs-on: ubuntu-latest
 
     defaults:
@@ -58,23 +51,98 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_NAME }}
+          images: ${{ env.BACKEND_IMAGE }}
           tags: |
             type=raw,value=latest
             type=sha
 
-      - name: Build and optionally push backend image
+      - name: Build and push backend image
         uses: docker/build-push-action@v6
         with:
           context: ./apps/backend
           file: ./apps/backend/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  terraform-check:
+  # 프론트엔드 이미지 빌드 & 푸시
+  frontend-build:
     runs-on: ubuntu-latest
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/frontend
+          file: ./apps/frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # 샌드박스 이미지 빌드 & 푸시
+  sandbox-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.SANDBOX_IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push sandbox image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/sandbox
+          file: ./apps/sandbox/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  terraform-and-ansible-deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - backend-build
+      - frontend-build
+      - sandbox-build
+
+    # # AWS IaC & Ansible 배포
     defaults:
       run:
         working-directory: infra
@@ -104,7 +172,43 @@ jobs:
           aws-region: ap-northeast-2
 
       - name: Terraform plan
-        if: github.event_name != 'pull_request' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != ''
         env:
           TF_VAR_k3s_token: ${{ secrets.K3S_TOKEN }}
         run: terraform plan -input=false -lock=false -no-color
+
+      - name: Terraform apply
+        env:
+          TF_VAR_k3s_token: ${{ secrets.K3S_TOKEN }}
+        run: terraform apply -auto-approve -input=false
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
+      - name: Write SSH key
+        working-directory: .
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/my-terraform-key.pem
+          chmod 600 ~/.ssh/my-terraform-key.pem
+
+      # 고정 IP를 하드코딩하지 않고 Terraform output 값으로 inventory 생성
+      - name: Generate Ansible inventory
+        shell: bash
+        run: |
+          MASTER_IP=$(terraform -chdir=infra output -raw master_fixed_ip)
+          WORKER_IP=$(terraform -chdir=infra output -raw worker_fixed_ip)
+
+          cat > k8s/ansible/inventory.ini <<EOF
+          [master]
+          ${MASTER_IP} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/my-terraform-key.pem
+
+          [worker]
+          ${WORKER_IP} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/my-terraform-key.pem
+          EOF
+
+      - name: Run Ansible playbook
+        working-directory: k8s/ansible
+        run: ansible-playbook -i inventory.ini site.yml

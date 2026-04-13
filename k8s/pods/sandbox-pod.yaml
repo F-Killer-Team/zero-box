@@ -12,7 +12,7 @@ spec:
   # runtimeClassName: gvisor
   containers:
   - name: sandbox
-    image: sandbox-image:latest
+    image: kimsewon/sandbox-runner:latest
     resources:
       limits:
         memory: "256Mi"
