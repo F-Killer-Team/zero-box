@@ -1,0 +1,13 @@
+from enum import Enum
+
+
+class JobStatus(str, Enum):
+    UPLOADED = "UPLOADED"
+    POD_REQUESTED = "POD_REQUESTED"
+    POD_RUNNING = "POD_RUNNING"
+    ANALYZING = "ANALYZING"
+    MALICIOUS = "MALICIOUS"
+    CLEAN = "CLEAN"
+    TERMINATING = "TERMINATING"
+    DESTROYED = "DESTROYED"
+    FAILED = "FAILED"
