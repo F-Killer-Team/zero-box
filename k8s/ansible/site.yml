@@ -1,0 +1,10 @@
+# ansible/site.yml
+- hosts: master
+  become: yes
+  roles:
+    - k3s_master
+
+- hosts: worker
+  become: yes
+  roles:
+    - k3s_worker

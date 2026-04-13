@@ -1,0 +1,28 @@
+- name: k3s 마스터 설치
+  shell: curl -sfL https://get.k3s.io | sh -s - --disable traefik
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: 노드 토큰 추출
+  slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: node_token
+
+- name: K8s 설정 폴더 생성
+  file:
+    path: "/home/{{ ansible_user }}/k8s-configs"
+    state: directory
+
+- name: K8s 설정 파일들 마스터로 복사
+  copy:
+    src: "{{ playbook_dir }}/../{{ item }}"
+    dest: "/home/{{ ansible_user }}/k8s-configs/"
+  with_items:
+    - network
+    - pods
+
+- name: K8s 리소스 배포 (kubectl apply)
+  shell: |
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    kubectl apply -f /home/{{ ansible_user }}/k8s-configs/network/
+    kubectl apply -f /home/{{ ansible_user }}/k8s-configs/pods/

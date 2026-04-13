@@ -1,0 +1,12 @@
+- name: k3s 워커 조인
+  shell: |
+    curl -sfL https://get.k3s.io | K3S_URL=https://{{ groups['master'][0] }}:6443 \
+    K3S_TOKEN={{ hostvars[groups['master'][0]]['node_token']['content'] | b64decode | trim }} sh -
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: 워커 노드 격리 설정 (Taint)
+  shell: |
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    kubectl taint nodes {{ inventory_hostname }} role=sandbox:NoSchedule --overwrite
+  delegate_to: "{{ groups['master'][0] }}"
