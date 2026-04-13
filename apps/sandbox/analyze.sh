@@ -1,11 +1,11 @@
 #!/bin/bash
 
-if [ -z "$JOB_ID" ] || [ -z "$BACKEND_URL" ] || [ -z "$TARGET_FILE" ]; then
+if [ -z "$JOB_ID" ] || [ -z "$BACKEND_URL" ] || [ -z "$FILE_PATH" ]; then
     echo "[에러] 환경변수(JOB_ID, BACKEND_URL, TARGET_FILE)가 부족합니다."
     exit 1
 fi
 
-LOG_OUTPUT=$(python3 "$TARGET_FILE" 2>&1)
+LOG_OUTPUT=$(python3 "$FILE_PATH" 2>&1)
 
 if echo "$LOG_OUTPUT" | grep -qE "HACKED|Exfiltrating|Unauthorized"; then
     STATUS="MALICIOUS"
