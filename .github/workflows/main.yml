@@ -1,0 +1,4 @@
+name: 'AWS Infrastructure Deploy'
+
+on:
+  workflow_dispatch:
