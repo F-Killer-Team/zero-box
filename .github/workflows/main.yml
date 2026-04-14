@@ -41,7 +41,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -164,7 +163,6 @@ jobs:
         run: terraform validate -no-color
 
       - name: Configure AWS credentials
-        if: github.event_name != 'pull_request' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -196,6 +194,7 @@ jobs:
 
       # 고정 IP를 하드코딩하지 않고 Terraform output 값으로 inventory 생성
       - name: Generate Ansible inventory
+        working-directory: .
         shell: bash
         run: |
           MASTER_IP=$(terraform -chdir=infra output -raw master_fixed_ip)
@@ -212,3 +211,4 @@ jobs:
       - name: Run Ansible playbook
         working-directory: k8s/ansible
         run: ansible-playbook -i inventory.ini site.yml
+
