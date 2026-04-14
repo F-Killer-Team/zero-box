@@ -25,6 +25,7 @@
   shell: |
     export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
     kubectl apply -f /home/{{ ansible_user }}/k8s-configs/network/
+    kubectl apply -f /home/{{ ansible_user }}/k8s-configs/pods/rbac.yaml
     kubectl apply -f /home/{{ ansible_user }}/k8s-configs/pods/frontend-pod.yaml
     kubectl apply -f /home/{{ ansible_user }}/k8s-configs/pods/backend-pod.yaml
 
