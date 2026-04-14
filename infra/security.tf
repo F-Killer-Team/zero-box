@@ -1,14 +1,14 @@
 resource "aws_security_group" "k3s_sg" {
   name        = "k3s-security-group"
   description = "Security group for K3s cluster"
-  vpc_id      = aws_vpc.main.id 
+  vpc_id      = aws_vpc.main.id
 
   # 1. SSH (관리용)
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] 
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # 2. K3s API Server (외부 kubectl 접속용)
