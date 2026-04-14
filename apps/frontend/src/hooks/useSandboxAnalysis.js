@@ -44,6 +44,15 @@ export function useSandboxAnalysis() {
     }
   };
 
+  const fetchFinalJob = async (currentJobId) => {
+    const job = await fetchJob(currentJobId);
+    const nextResult = buildResultFromJob(job);
+
+    if (nextResult) {
+      setResult(nextResult);
+    }
+  };
+
   const processNextLog = () => {
     if (isProcessingLogRef.current) {
       return;
@@ -88,21 +97,51 @@ export function useSandboxAnalysis() {
 
         setCurrentTypingLog(null);
 
-        nextLineTimeoutRef.current = setTimeout(() => {
-          isProcessingLogRef.current = false;
-          nextLineTimeoutRef.current = null;
-          processNextLog();
-        }, 700);
+        Promise.resolve(nextLog.onComplete?.())
+          .catch((error) => {
+            const message =
+              error?.message || "결과 처리 중 오류가 발생했습니다.";
+
+            setLogs((prev) => [
+              ...prev,
+              {
+                id: `${Date.now()}-${Math.random()}`,
+                time: `[${new Date().toLocaleTimeString()}]`,
+                text: message,
+                fullText: message,
+                type: "danger",
+              },
+            ]);
+
+            setStatus("error");
+            setIsRunning(false);
+            closeEventStream();
+          })
+          .finally(() => {
+            nextLineTimeoutRef.current = setTimeout(() => {
+              isProcessingLogRef.current = false;
+              nextLineTimeoutRef.current = null;
+              processNextLog();
+            }, 250);
+          });
       }
     }, 60);
   };
 
-  const enqueueLog = (message, type = "normal") => {
+  const enqueueLog = (message, options = {}) => {
     if (!message) {
       return;
     }
 
-    if (lastMessageRef.current === message) {
+    const {
+      type = "normal",
+      status: nextStatus = null,
+      progress = null,
+      onComplete = null,
+      dedupe = true,
+    } = options;
+
+    if (dedupe && lastMessageRef.current === message) {
       return;
     }
 
@@ -115,6 +154,19 @@ export function useSandboxAnalysis() {
       time: `[${now}]`,
       fullText: message,
       type,
+      onComplete: async () => {
+        if (nextStatus) {
+          setStatus(nextStatus);
+        }
+
+        if (typeof progress === "number") {
+          setTargetProgress(progress);
+        }
+
+        if (onComplete) {
+          await onComplete();
+        }
+      },
     });
 
     processNextLog();
@@ -140,60 +192,64 @@ export function useSandboxAnalysis() {
     setIsRunning(false);
   };
 
-  const fetchFinalJob = async (currentJobId) => {
-    const job = await fetchJob(currentJobId);
-    const nextResult = buildResultFromJob(job);
-
-    if (nextResult) {
-      setResult(nextResult);
-    }
-  };
-
   const connectJobEvents = (currentJobId) => {
     closeEventStream();
 
     const eventSource = createJobEventSource(currentJobId);
 
-    eventSource.onmessage = async (event) => {
+    eventSource.onmessage = (event) => {
       const payload = JSON.parse(event.data);
-
-      setStatus(mapBackendStatusToUiStatus(payload.status));
-      setTargetProgress(payload.progress ?? 0);
-
+      const uiStatus = mapBackendStatusToUiStatus(payload.status);
+      const progress = payload.progress ?? 0;
       const message =
         STATUS_MESSAGE_MAP[payload.status] || "작업을 처리하고 있습니다.";
+      const isDanger =
+        payload.status === "MALICIOUS" || payload.status === "FAILED";
 
-      if (payload.status === "MALICIOUS" || payload.status === "FAILED") {
-        enqueueLog(message, "danger");
-      } else {
-        enqueueLog(message);
-      }
+      enqueueLog(message, {
+        type: isDanger ? "danger" : "normal",
+        status: uiStatus,
+        progress,
+        onComplete: async () => {
+          if (TERMINAL_STATUSES.has(payload.status)) {
+            if (payload.status === "FAILED") {
+              setIsRunning(false);
+              closeEventStream();
+              return;
+            }
 
-      if (TERMINAL_STATUSES.has(payload.status)) {
-        if (payload.status === "FAILED") {
-          setIsRunning(false);
-          closeEventStream();
-          return;
-        }
+            try {
+              await fetchFinalJob(currentJobId);
+            } catch (error) {
+              const errorMessage =
+                error?.message || "결과 조회 중 오류가 발생했습니다.";
 
-        try {
-          await fetchFinalJob(currentJobId);
-        } catch (error) {
-          enqueueLog(error.message || "결과 조회 중 오류가 발생했습니다.", "danger");
-        }
+              enqueueLog(errorMessage, {
+                type: "danger",
+                status: "error",
+                dedupe: false,
+              });
+            }
 
-        if (payload.status === "DESTROYED") {
-          setIsRunning(false);
-          closeEventStream();
-        }
-      }
+            if (payload.status === "DESTROYED") {
+              setIsRunning(false);
+              closeEventStream();
+            }
+          }
+        },
+      });
     };
 
     eventSource.onerror = () => {
-      enqueueLog("실시간 연결이 종료되었습니다.", "danger");
-      setStatus("error");
-      setIsRunning(false);
-      closeEventStream();
+      enqueueLog("실시간 연결이 종료되었습니다.", {
+        type: "danger",
+        status: "error",
+        dedupe: false,
+        onComplete: () => {
+          setIsRunning(false);
+          closeEventStream();
+        },
+      });
     };
 
     eventSourceRef.current = eventSource;
@@ -221,9 +277,14 @@ export function useSandboxAnalysis() {
 
       connectJobEvents(data.job_id);
     } catch (error) {
-      enqueueLog(error.message || "요청 처리 중 오류가 발생했습니다.", "danger");
-      setStatus("error");
-      setIsRunning(false);
+      enqueueLog(error.message || "요청 처리 중 오류가 발생했습니다.", {
+        type: "danger",
+        status: "error",
+        dedupe: false,
+        onComplete: () => {
+          setIsRunning(false);
+        },
+      });
     }
   };
 
@@ -249,7 +310,7 @@ export function useSandboxAnalysis() {
         const next = prev + 1;
         return next > targetProgress ? targetProgress : next;
       });
-    }, 40);
+    }, 85);
 
     return () => clearInterval(timer);
   }, [targetProgress, displayProgress]);
