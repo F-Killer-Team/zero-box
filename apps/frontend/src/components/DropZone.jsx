@@ -46,8 +46,6 @@ function DropZone({ selectedFile, setSelectedFile, handleUpload, isRunning }) {
 
       <input type="file" onChange={handleChange} disabled={isRunning} />
 
-      {selectedFile && <p className="filename">선택된 파일: {selectedFile.name}</p>}
-
       <button onClick={handleUpload} disabled={isRunning || !selectedFile}>
         {isRunning ? "분석 진행 중..." : "격리실로 전송"}
       </button>

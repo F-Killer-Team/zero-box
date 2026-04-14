@@ -24,10 +24,10 @@ function App() {
   return (
     <div className="app">
       <div className="container">
-        <h1>1회용 격리실 파일 분석 시스템</h1>
+        <h1>ZERO BOX</h1>
 
         <p className="subtitle">
-          의심 파일을 내 PC 대신 격리 컨테이너에서 분석합니다.
+          의심 파일을 내 PC 대신 안전한 격리 환경에서 분석합니다.
         </p>
 
         <DropZone
@@ -46,8 +46,6 @@ function App() {
             화면 초기화
           </button>
         </div>
-
-        {jobId && <p className="job-id">현재 작업 ID: {jobId}</p>}
 
         <ProgressPanel status={status} progress={progress} />
         <LogPanel logs={logs} currentTypingLog={currentTypingLog} />

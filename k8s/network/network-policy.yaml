@@ -14,4 +14,20 @@ spec:
     - podSelector:
         matchLabels:
           role: backend
-  egress: []
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          role: backend
+    ports:
+    - protocol: TCP
+      port: 8000
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53

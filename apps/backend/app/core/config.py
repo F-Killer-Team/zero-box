@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     k8s_namespace: str = "default"
     sandbox_image: str = "sandbox-image:latest"
-    backend_base_url: str = "http://backend-service:8000"
+    backend_base_url: str = "http://backend-service.default.svc.cluster.local:8000"
     use_in_cluster_config: bool = False
     enable_mock_sandbox: bool = True
 
