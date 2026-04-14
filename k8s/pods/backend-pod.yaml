@@ -20,11 +20,11 @@ spec:
         ports:
         - containerPort: 8000
         env:
-        - name: ENABLE_MOCK_SANDBOX
+        - name: APP_ENABLE_MOCK_SANDBOX
           value: "false"
-        - name: USE_IN_CLUSTER_CONFIG
+        - name: APP_USE_IN_CLUSTER_CONFIG
           value: "true"
-        - name: K8S_NAMESPACE
+        - name: APP_K8S_NAMESPACE
           value: "default" 
 ---
 apiVersion: v1
