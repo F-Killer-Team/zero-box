@@ -22,7 +22,7 @@ JSON_PAYLOAD=$(jq -n \
   '{status: $status, summary: $summary, log_excerpt: $log}')
 
 # 백엔드 전송
-curl -X POST "${BACKEND_URL}/api/internal/jobs/${JOB_ID}/result" \
+curl -X POST "$CALLBACK_URL}/api/internal/jobs/${JOB_ID}/result" \
      -H "Content-Type: application/json" \
      -d "$JSON_PAYLOAD"
 
