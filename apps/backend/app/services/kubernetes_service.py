@@ -17,7 +17,7 @@ def _load_config() -> None:
         return
 
 
-def create_sandbox_job(job_id: str, file_path: str, filename: str) -> dict[str, str | bool]:
+def create_sandbox_job(job_id: str, filename: str) -> dict[str, str | bool]:
     try:
         _load_config()
     except Exception:
@@ -26,6 +26,7 @@ def create_sandbox_job(job_id: str, file_path: str, filename: str) -> dict[str, 
         raise
 
     callback_url = f"{settings.backend_base_url}/api/internal/jobs/{job_id}/result"
+    download_url = f"{settings.backend_base_url}/api/internal/jobs/{job_id}/file"
     job_name = f"sandbox-job-{job_id}"
 
     container = client.V1Container(
@@ -34,9 +35,9 @@ def create_sandbox_job(job_id: str, file_path: str, filename: str) -> dict[str, 
         command=["bash", "/sandbox/analyze.sh"],
         env=[
             client.V1EnvVar(name="JOB_ID", value=job_id),
-            client.V1EnvVar(name="FILE_PATH", value=file_path),
             client.V1EnvVar(name="FILE_NAME", value=filename),
             client.V1EnvVar(name="CALLBACK_URL", value=callback_url),
+            client.V1EnvVar(name="DOWNLOAD_URL", value=download_url),
         ],
     )
 

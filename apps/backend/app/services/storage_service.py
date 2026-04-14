@@ -23,3 +23,15 @@ async def save_upload(job_id: str, file: UploadFile) -> Path:
     destination.write_bytes(content)
 
     return destination
+
+
+def get_saved_upload(job_id: str) -> Path | None:
+    upload_dir = ensure_upload_dir() / job_id
+    if not upload_dir.exists():
+        return None
+
+    files = [path for path in upload_dir.iterdir() if path.is_file()]
+    if not files:
+        return None
+
+    return files[0]

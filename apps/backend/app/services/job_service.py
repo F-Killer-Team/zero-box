@@ -57,7 +57,7 @@ async def create_job(file: UploadFile) -> UploadResponse:
     update_job_status(job_id, JobStatus.POD_REQUESTED)
     add_event(job_id, JobStatus.POD_REQUESTED, "Requesting security sandbox provisioning...", 20)
 
-    sandbox_job = create_sandbox_job(job_id, str(saved_path), filename)
+    sandbox_job = create_sandbox_job(job_id, filename)
     if sandbox_job["submitted"]:
         update_job_status(job_id, JobStatus.POD_RUNNING, sandbox_job_name=str(sandbox_job["job_name"]))
         add_event(job_id, JobStatus.POD_RUNNING, f"Sandbox created successfully (ID: {sandbox_job['job_name']}).", 35)

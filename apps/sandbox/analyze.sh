@@ -1,18 +1,26 @@
 #!/bin/bash
 
-if [ -z "$JOB_ID" ] || [ -z "$CALLBACK_URL" ] || [ -z "$FILE_PATH" ]; then
-    echo "[에러] 환경변수(JOB_ID, BACKEND_URL, TARGET_FILE)가 부족합니다."
+set -euo pipefail
+
+if [ -z "${JOB_ID:-}" ] || [ -z "${CALLBACK_URL:-}" ] || [ -z "${DOWNLOAD_URL:-}" ]; then
+    echo "[ERROR] Missing required environment variables: JOB_ID, CALLBACK_URL, DOWNLOAD_URL"
     exit 1
 fi
 
-LOG_OUTPUT=$(python3 "$FILE_PATH" 2>&1)
+WORK_DIR="/tmp/sandbox"
+TARGET_FILE="${WORK_DIR}/${FILE_NAME:-sample.py}"
+
+mkdir -p "${WORK_DIR}"
+curl -fsSL "${DOWNLOAD_URL}" -o "${TARGET_FILE}"
+
+LOG_OUTPUT=$(python3 "${TARGET_FILE}" 2>&1 || true)
 
 if echo "$LOG_OUTPUT" | grep -qE "HACKED|Exfiltrating|Unauthorized"; then
     STATUS="MALICIOUS"
-    SUMMARY="[악성코드 발견] 비인가 접근 및 데이터 탈취 행위가 감지되었습니다."
+    SUMMARY="Detected ransomware-like runtime behavior in the uploaded file."
 else
     STATUS="CLEAN"
-    SUMMARY="위험 요소가 발견되지 않았습니다."
+    SUMMARY="No suspicious runtime behavior was detected."
 fi
 
 JSON_PAYLOAD=$(jq -n \
@@ -21,9 +29,8 @@ JSON_PAYLOAD=$(jq -n \
   --arg log "$LOG_OUTPUT" \
   '{status: $status, summary: $summary, log_excerpt: $log}')
 
-# 백엔드 전송
-curl -X POST "$CALLBACK_URL}/api/internal/jobs/${JOB_ID}/result" \
+curl -X POST "${CALLBACK_URL}" \
      -H "Content-Type: application/json" \
      -d "$JSON_PAYLOAD"
 
-echo "분석 결과($STATUS) API 전송 완료!"
+echo "Analysis result (${STATUS}) sent to backend."
