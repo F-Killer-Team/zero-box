@@ -1,20 +1,21 @@
 ﻿# ZERO BOX
 
-> KT Cloud Hackathon 2026 | Awarded 2nd Place  
+> KT Cloud Hackathon 2026 | 🥈 Awarded 2nd Place  
 > K3S 기반 1회용 격리실을 동적으로 생성해 의심 파일을 격리 분석하는 랜섬웨어 대응 서비스
 
 ## Overview
 
-ZERO BOX는 기업 임직원이 의심 파일을 직접 실행하지 않고도, 웹에서 안전하게 분석을 요청할 수 있도록 설계된 서비스입니다.  
+ZERO BOX는 기업 임직원이 의심 파일을 직접 실행하지 않고도, 웹에서 안전하게 분석을 요청할 수 있도록 설계된 랜섬웨어 대응 서비스입니다.  
 파일이 업로드되면 백엔드가 K3S 클러스터에 `1회용 Sandbox Job`을 생성하고, 분석이 끝나면 격리실을 즉시 폐기합니다.
 
 - Target: `기업 임직원`
 - Domain: `사이버 보안`
-- Core Concept: `On-Demand Sandbox`, `Disposable Isolation`, `Real-time Visibility`
+- Keywords: `On-Demand Sandbox`, `Disposable Isolation`, `Real-time Visibility`
 
 ## Problem
 
-샌드박스는 의심스러운 파일을 실제 환경과 분리된 격리 공간에서 실행·분석하는 보안 기술입니다.  
+샌드박스는 의심스러운 파일을 실제 환경과 분리된 격리 공간에서 안전하게 실행·분석하는 보안 기술입니다.
+
 하지만 기존 상용 샌드박스는 다음과 같은 한계를 가집니다.
 
 - 도입 비용과 운영 부담이 크고 확장이 무겁다
@@ -111,63 +112,43 @@ Pipeline:
     <td width="50%" align="center">
       <img src="./demo_assets/clean-pod-lifecycle.gif" alt="Clean pod lifecycle" />
       <br />
-      <sub>정상 파일 업로드 후 1회용 Sandbox Pod가 생성되고, 분석 완료 후 종료되는 흐름</sub>
+      <sub><b>normal.py</b> 분석 시 Sandbox Pod 생성 · 종료 흐름</sub>
     </td>
     <td width="50%" align="center">
       <img src="./demo_assets/malicious-pod-lifecycle.gif" alt="Malicious pod lifecycle" />
       <br />
-      <sub>악성 파일 업로드 후 1회용 Sandbox Pod가 생성되고, 분석 완료 후 종료되는 흐름</sub>
+      <sub><b>ransomware.py</b> 분석 시 Sandbox Pod 생성 · 종료 흐름</sub>
     </td>
   </tr>
 </table>
 
+정상 파일과 악성 파일 모두 업로드 직후 1회용 Sandbox Pod가 생성되며, 분석이 끝나면 자동으로 종료·삭제됩니다.
+
 ### Execution Logs
+
+격리실 내부에서 파일이 실제로 실행되며, 실행 로그를 바탕으로 최종 판정 결과가 반환됩니다.
 
 <table>
   <tr>
     <td width="50%" align="center">
       <img src="./demo_assets/clean-analysis-log.png" alt="Clean analysis log" />
       <br />
-      <sub>격리실 내부에서 파일이 실제로 실행되며, 정상 실행 로그와 최종 <b>CLEAN</b> 판정 결과를 확인 가능</sub>
+      <sub>최종 <b>CLEAN</b> 판정 결과</sub>
     </td>
     <td width="50%" align="center">
       <img src="./demo_assets/malicious-analysis-log.png" alt="Malicious analysis log" />
       <br />
-      <sub>격리실 내부에서 파일이 실제로 실행되며, 악성 행위 로그와 최종 <b>MALICIOUS</b> 판정 결과를 확인 가능</sub>
+      <sub>최종 <b>MALICIOUS</b> 판정 결과</sub>
     </td>
   </tr>
 </table>
 
 ## Tech Stack
 
-### Frontend
-
-- React
-- Vite
-- CSS
-- SSE
-
-### Backend
-
-- FastAPI
-- Python
-- Pydantic
-
-### Sandbox
-
-- Docker
-- Bash
-- Python
-
-### Infra / DevOps
-
-- AWS EC2
-- K3S
-- Kubernetes Job / Pod
-- Terraform
-- Ansible
-- GitHub Actions
-- Docker Hub
+- Frontend: `React`, `Vite`, `CSS`, `SSE`
+- Backend: `FastAPI`, `Python`, `Pydantic`
+- Sandbox: `Docker`, `Bash`, `Python`
+- Infra / DevOps: `AWS EC2`, `K3S`, `Kubernetes Job/Pod`, `Terraform`, `Ansible`, `GitHub Actions`, `Docker Hub`
 
 ## Repository Structure
 
@@ -187,21 +168,14 @@ Pipeline:
 
 ## What We Built
 
-### Backend
-
 - 파일 업로드 API
 - 작업 상태 조회 API
 - SSE 이벤트 스트림
 - Sandbox 결과 콜백 처리
 - 업로드 파일 다운로드 엔드포인트
+- Terraform / Ansible / GitHub Actions 기반 배포 자동화
 
 자세한 내용은 [apps/backend/README.md](./apps/backend/README.md)와 [apps/backend/API_CONTRACT.md](./apps/backend/API_CONTRACT.md)를 참고하세요.
-
-### Infrastructure
-
-- Terraform으로 AWS 네트워크 및 EC2 구성
-- Ansible로 K3S 설치 및 초기 리소스 배포
-- Backend / Frontend / Sandbox 이미지 빌드 및 배포 자동화
 
 ## Expected Impact
 
